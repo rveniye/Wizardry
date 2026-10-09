@@ -91,7 +91,7 @@ class Parser:
 
         return instructions
 
-    def tokenise(self, instruction: str) -> dict[str, Any]:
+    def tokenise(self, instruction: str):
         """
         Splits a given instruction into individual tokens for processing.
 

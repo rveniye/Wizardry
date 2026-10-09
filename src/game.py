@@ -1,33 +1,36 @@
 import sys
 import os
-from pathlib import Path
 import copy
 import json
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+from pathlib import Path
 from src.card_index import *
 from src.modules.utils import *
+
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 # TODO: Game setup
 # TODO: Core game loop (playing cards, blocking, etc.)
 
 class GameEngine:
-    def __init__(self) -> None:
+    def __init__(self, game_key: str) -> None:
         """
         The cursor for the game engine.
         """
+        # Setup and define variables
+        self.state_path = Path(__file__).resolve().parent.parent / f"db//{game_key}//game_state.json"
 
-    def start_game(self, game_key: str, p1: str, p2: str, p1_deck: list[Card], p2_deck: list[Card]) -> 'GameEngine':
+    def start_game(self, p1: str, p2: str, p1_deck: list[Card], p2_deck: list[Card]) -> 'GameEngine':
         """
         Initialises a new game instance
 
-        :param game_key: The unique ID for the game.
-        :type game_key: str
+        :param p1:
+        :param p2:
+        :param p1_deck:
+        :param p2_deck:
         """
-        # Setup and define variables
-        self.state_path = Path(__file__).resolve().parent.parent / f"db//{game_key}//game_state.json"
         
         # Setup game state
         # Start with player 1
@@ -48,6 +51,7 @@ class GameEngine:
 
         for card in p1_deck:
             card.id = i
+            
             if card.card_type == "Land":
                 p1_data[p1]["deck"].append(
                     { str(card.id):
@@ -97,6 +101,7 @@ class GameEngine:
 
         for card in p2_deck:
             card.id = i
+            
             if card.card_type == "Land":
                 p2_data[p2]["deck"].append(
                     { str(card.id):
@@ -111,6 +116,7 @@ class GameEngine:
                         }
                     }
                 )
+                
             elif card.card_type == "Creature":
                 p2_data[p2]["deck"].append(
                     { str(card.id):
