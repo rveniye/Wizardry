@@ -44,7 +44,6 @@ class Card:
             "tapped": self.tapped,
             "statuses": self.statuses,
             "effect": self.effect,
-            "type": self.card_type
         }
 
 
@@ -77,7 +76,7 @@ class LandCard(Card):
      
 
 class CreatureCard(Card):
-    def __init__(self, name: str, generic_mana: int, sp_mana: int, description: str, att: int, end: int, effect: str) -> None:
+    def __init__(self, name: str, generic_mana: int, sp_mana: str, description: str, att: int, end: int, effect: str) -> None:
         """
         Initialises a Creature Card.
         

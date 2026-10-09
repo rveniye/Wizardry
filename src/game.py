@@ -15,21 +15,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # TODO: Core game loop (playing cards, blocking, etc.)
 
 class GameEngine:
-    def __init__(self, game_key: str) -> None:
+    def __init__(self) -> None:
         """
         The cursor for the game engine.
         """
-        # Setup and define variables
-        self.state_path = Path(__file__).resolve().parent.parent / f"db//{game_key}//game_state.json"
 
-    def start_game(self, p1: str, p2: str, p1_deck: list[Card], p2_deck: list[Card]) -> 'GameEngine':
+    def start_game(self, game_key: str, p1: str, p2: str, p1_deck: list[CreatureCard | LandCard], p2_deck: list[Card]) -> 'GameEngine':
         """
         Initialises a new game instance
 
-        :param p1:
-        :param p2:
-        :param p1_deck:
-        :param p2_deck:
+        :param p1: The first player of the game (this player starts)
+        :param p2: The second player of the game
+        :param p1_deck: The deck for the first player
+        :param p2_deck: The deck for the second player
+        :param game_key: The unique ID for the game.
+        :type game_key: str
         """
         
         # Setup game state
@@ -136,7 +136,10 @@ class GameEngine:
             i += 1
 
         # Setup game files
-        state = {}
+        state = {
+            "current_player": p1,
+            "cooldowns": {},
+        }
         state.update(p1_data)
         state.update(p2_data)
 
@@ -150,7 +153,8 @@ class GameEngine:
 
         return self
 
-    def get_state(self, game_key: str) -> Dict[str, Any]:
+    @staticmethod
+    def get_state(game_key: str) -> Dict[str, Any]:
         """
         Returns the game state as a dictionary.
 
@@ -165,6 +169,9 @@ class GameEngine:
         Plays a land into the player's territory.
 
         :param game_key: The unique ID for the game.
+        :param ID: The ID of the land that the player uses.
+        :param player: The player that uses the land.
         :type game_key: str
         """
-        pass
+        game_state = self.get_state(game_key)
+

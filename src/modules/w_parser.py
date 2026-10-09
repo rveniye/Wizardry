@@ -25,7 +25,7 @@ from typing import Any
 
 
 class Parser:
-    def __init__(self, effect_string: str) -> None:
+    def __init__(self, effect_string=None) -> None:
         """
         Initialises a parser instance.
 
@@ -91,7 +91,7 @@ class Parser:
 
         return instructions
 
-    def tokenise(self, instruction: str):
+    def tokenise(self, instruction: str) -> list:
         """
         Splits a given instruction into individual tokens for processing.
 
@@ -145,7 +145,7 @@ class Parser:
 
         return tokens
 
-    def parse_single(self, instruction) -> dict[str, Any]:
+    def parse_single(self, instruction) -> dict[str, Any] | bool | None:
         """
         Parses single instructions into separate values.
 
@@ -157,7 +157,6 @@ class Parser:
             "raw": instruction,
             "action": None,
             "field": None,
-            "value": None,
             "amount": None,
             "name": None,
             "target_type": None,
@@ -180,7 +179,7 @@ class Parser:
         if tokens[index].endswith("?"):
             result["trigger"] = tokens[index]
             index += 1
-        
+
         # Tap for colour
         if tokens[index] == "for":
             result["require"] = True
@@ -202,9 +201,9 @@ class Parser:
             # Check for integer value to increment by
             if index < len(tokens):
                 if isinstance(tokens[index], tuple):
-                    result["value"] = tokens[index]  # Resolve expression later
+                    result["amount"] = tokens[index]  # Resolve expression later
                 else:
-                    result["value"] = int(tokens[index])
+                    result["amount"] = int(tokens[index])
                 index += 1
 
             # Check for a specific target name
@@ -214,7 +213,7 @@ class Parser:
                     result["name"] = name
                     index += 1
 
-            # Check for whether or not a target is required
+            # Check for whether a target is required
             if index < len(tokens):
                 if tokens[index] == "creatureid":
                     result["creatureid"] = True
@@ -241,35 +240,27 @@ class Parser:
             colors = []
             if index < len(tokens):
                 if type(tokens[index]) == tuple:
-                    result["value"] = tokens[index]
+                    result["amount"] = tokens[index]
                     index += 1
                 else:
                     amount = int(tokens[index])
                     index += 1
                 if index < len(tokens):
                     colors = tokens[index].split('/')
-                    
+
             result['field'] = 'mana'
             result['value'] = colors
             result['amount'] = amount
 
         # General commands
-        elif action in ["draw", "discard", "heal", "damage", "destroy", "kill", "revive", "nomanareset", "invuln"]:
+        elif action in ["draw", "discard", "heal", "revive", "nomanareset", "invuln"]:
             if index < len(tokens):
                 if type(tokens[index]) == tuple:
-                    result["value"] = tokens[index]
+                    result["amount"] = tokens[index]
                     index += 1
 
                 if tokens[index] == "creatureid":
                     result["creatureid"] = True
-                    index += 1
-                
-                elif tokens[index] == "self":
-                    result["target_type"] = "self"  # The player with the current turn
-                    index += 1
-                
-                elif tokens[index] == "player":
-                    result["target_type"] = "player"
                     index += 1
 
                 elif tokens[index] == "global":
@@ -280,11 +271,15 @@ class Parser:
                     result["all"] = True
                     index += 1
 
+                elif tokens[index].isdigit():
+                    result["amount"] = tokens[index]
+                    index += 1
+
         # Creates a card
         elif action == "create":
             if index < len(tokens):
                 if type(tokens[index]) == tuple:
-                    result["value"] = tokens[index]
+                    result["amount"] = tokens[index]
                     index += 1
                 else:
                     amount = int(tokens[index])
@@ -294,18 +289,18 @@ class Parser:
                 index += 1
 
             if action == "nomanareset":
-                result["value"] = True
-        
+                result["amount"] = True
+
         # Applies an effect onto a card
         elif action == "apply":
             if index < len(tokens):
-                result['field'] = tokens[index]
+                result['status'] = tokens[index]
                 index += 1
 
                 if tokens[index] == "creatureid":
                     result["creatureid"] = True
                     index += 1
-                
+
                 else:
                     target_token = tokens[index]
                     if '/' in target_token:
@@ -320,61 +315,62 @@ class Parser:
                 if tokens[index] == "creatureid":
                     result["creatureid"] = True
                     index += 1
-            
+
                 result["field"] = tokens[index]
                 index += 1
-                result["value"] = tokens[index]
+                result["amount"] = tokens[index]
                 index += 1
-        
+
         # Morphs a creature
         elif action == "morph":
             if index < len(tokens):
                 if tokens[index] == "creatureid":
                     result["creatureid"] = True
                     index += 1
-                
-                result["value"] = tokens[index]
+
+                result["amount"] = tokens[index]
 
         # Return the parsed result for any action branch
         return result
 
-    def split_paren_tokens(self, paren_content: str) -> list:
-        """
-        Splits the tokens in parenthesis.
+    # @staticmethod
+    # def split_paren_tokens(paren_content: str) -> list:
+    #     """
+    #     Splits the tokens in parenthesis.
+    #
+    #     :param paren_content: The content inside the paranthesis to tokenise.
+    #     :type paren_content: str
+    #     """
+    #     tokens = []
+    #     current = ""
+    #     in_quotes = False
+    #
+    #     for char in paren_content:
+    #         if char == '"':
+    #             in_quotes = not in_quotes
+    #             continue
+    #         if char.isspace() and not in_quotes:
+    #             if current.strip():
+    #                 tokens.append(current.strip())
+    #                 current = ""
+    #         else:
+    #             current += char
+    #
+    #     if current.strip():
+    #         tokens.append(current.strip())
+    #
+    #     return tokens
 
-        :param paren_content: The content inside the paranthesis to tokenise.
-        :type paren_content: str
-        """
-        tokens = []
-        current = ""
-        in_quotes = False
-
-        for char in paren_content:
-            if char == '"':
-                in_quotes = not in_quotes
-                continue
-            if char.isspace() and not in_quotes:
-                if current.strip():
-                    tokens.append(current.strip())
-                    current = ""
-            else:
-                current += char
-
-        if current.strip():
-            tokens.append(current.strip())
-
-        return tokens
-    
-    def get_triggers(self, effect: str) -> list:
+    def get_triggers(self) -> list:
         """
         Returns a list of triggers for a given string.
 
         :param effect: The effect string to parse.
         :type effect: str
         """
-        instructions = self.parse(effect)
-        return [inst['trigger'] for inst in instructions if inst.get('trigger')]
-    
+        instructions = self.parse()
+        return instructions
+
     def get_static_abilities(self, effect):
         """
         Returns a list of static abilities for a given string.
@@ -382,5 +378,5 @@ class Parser:
         :param effect: The effect string to parse.
         :type effect: str
         """
-        instructions = self.parse(effect)
-        return [inst['status'] for inst in instructions if inst.get('action') == 'static']
+        instructions = self.parse_single(effect)
+        return instructions

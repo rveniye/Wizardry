@@ -467,3 +467,63 @@ intellect_devourer = CreatureCard(
     end=2,
     effect="haste",
 )
+
+
+
+# Green creatures
+green_creatures = [
+    slime,
+    bigger_slime,
+    forest_bear,
+    vine_elemental,
+    alpha_wolf,
+    stone_giant,
+    green_wizar,
+    king_slime,
+    archer,
+    hero,
+]
+
+# Blue creatures
+blue_creatures = [
+    skeleton,
+    skeleton_army,
+    phantom_warrior,
+    sea_serpent,
+    arcane_scholar,
+    vergil,
+    blue_wizar,
+    mind_sorcerer,
+    wanderer,
+    mind_flayer,
+]
+
+# Red creatures
+red_creatures = [
+    goblin_raider,
+    fire_elemental,
+    dragon_whelp,
+    berserker,
+    imp,
+    sazael_the_great,
+    red_wizar,
+    intellect_devourer,
+]
+
+# Spell cards
+spells = []
+
+# Land cards
+lands = [
+    forest,
+    island,
+    mountain,
+    land_of_iridesence,
+    graveyard,
+    tropical_grove,
+    volcanic_peak,
+    wild_highlands,
+    atlantis,
+    sand_temple,
+    dragon_dwelling,
+]

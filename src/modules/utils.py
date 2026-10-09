@@ -4,7 +4,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.cards import *
 from src.card_index import *
-from src.modules.parser import *
+from src.modules.w_parser import *
 import copy
 from typing import Dict, Any
 

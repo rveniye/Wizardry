@@ -26,3 +26,6 @@ Thumbs.db
 test_*.py
 demo_*.py
 example_*.py
+
+# DB
+db/

@@ -1,7 +1,12 @@
-from src.game import *
-from src.cards import *
-from src.card_index import *
+from game import GameEngine
+from src import cards
+from src import card_index
+
+from src.modules.w_parser import *
+
+from copy import deepcopy
+import random
 
 
-game = GameEngine().start_game(game_key="test", p1="player1", p2="player2", p1_deck=[skeleton, skeleton, vergil, forest], p2_deck=[berserker, skeleton, vergil, forest])
-print(game.get_state("test"))
+my_parser = Parser().get_triggers("tap? gen 1 mana; summon? haste")
+print(my_parser)
