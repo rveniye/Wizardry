@@ -21,362 +21,291 @@ Additional syntax:
 """
 
 
-from typing import Any
+from typing import Any, Dict
+from modules.util_functions import resolve_expr
 
 
-class Parser:
-    def __init__(self, effect_string=None) -> None:
-        """
-        Initialises a parser instance.
+TRIGGERS = ["tap?", "summon?", "enter?", "attacking?", "blocking?", "discard?"]
+STATIC_ABILITIES = ["haste", "flying", "reach", "entertap", "unblockable", "trample", "invincible"]
+ACTIONS = ["gen", "draw", "discard", "heal", "return", "count", "damage", "destroy", "apply", "kill", "morph", "revive", "nomanareset", "create"]
+MODIFIERS = ["inc", "dec"]
+PLACES = ["graveyard", "deck", "hand"]
+FIELDS = ["att", "end"]
+TARGET_TYPES = ["creatureid", "player"]
 
-        :param effect_string: The effect to parse.
-        :type effect_string: str
-        """
 
-        self.effect_string = effect_string
-        self.TRIGGERS = [
-            "tap?",
-            "summon?",
-            "enter?",
-            "attacking?",
-            "blocking?",
-            "discard?",
-        ]
-        self.STATIC_ABILITIES = [
-            "haste",
-            "flying",
-            "reach",
-            "entertap",
-            "unblockable",
-            "trample",
-            "invincible",
-        ]
-        self.MODIFIERS = ["inc", "dec"]
-        self.ACTIONS = [
-            "gen",
-            "draw",
-            "discard",
-            "heal",
-            "return",
-            "count",
-            "damage",
-            "destroy",
-            "apply",
-            "kill",
-            "morph",
-            "revive",
-            "nomanareset",
-            "create",
-        ]
-        self.PLACES = ["graveyard", "deck", "hand"]
-        self.FIELDS = ["att", "end"]
-        self.TARGET_TYPES = ["creatureid", "player"]
+def parse(effect_string, game_state: Dict[str, Any], player: str) -> list:
+    """
+    Returns a list of parsed instructions to process.
 
-    def parse(self) -> list:
-        """
-        Returns a list of parsed instructions to process.
-        """
-        if not self.effect_string:
-            return []
+    :param effect_string: The effect to parse.
+    :type effect_string: str
+    :param game_state: The game state.
+    :type game_state: Dict[str, Any]
+    :param player: The player to parse.
+    :type player: str
+    """
+    instructions = []
+    raw_instructions = effect_string.split(";")
 
-        instructions = []
-        raw_instructions = self.effect_string.split(";")
+    for instruction in raw_instructions:
+        instruction = instruction.strip()
+        if instruction:
+            parsed = parse_single(instruction, game_state, player)
+            if parsed:
+                instructions.append(parsed)
 
-        for instruction in raw_instructions:
-            instruction = instruction.strip()
-            if instruction:
-                parsed = self.parse_single(instruction)
-                if parsed:
-                    instructions.append(parsed)
+    return instructions
 
-        return instructions
 
-    def tokenise(self, instruction: str) -> list:
-        """
-        Splits a given instruction into individual tokens for processing.
+def tokenise(instruction: str, game_state: Dict[str, Any], player: str) -> list:
+    """
+    Splits a given instruction into individual tokens for processing.
 
-        :param instruction: The instruction to be tokenised.
-        :type instruction: str
-        """
-        tokens = []
-        current = ""
-        depth = 0
-        paren_content = ""
-        in_quotes = False
+    :param instruction: The instruction to be tokenised.
+    :type instruction: str
+    :param game_state: The game state.
+    :type game_state: Dict[str, Any]
+    :param player: The player to parse.
+    :type player: str
+    """
+    tokens = []
+    current = ""
+    depth = 0
+    paren_content = ""
+    in_quotes = False
 
-        for char in instruction:
-            if char == '"' and depth == 0:
-                if in_quotes:
-                    if current.strip():
-                        tokens.append(current.strip())
-                        current = ""
-                    in_quotes = False
-                else:
-                    if current.strip():
-                        tokens.append(current.strip())
-                        current = ""
-                    in_quotes = True
-                continue
-            if char == "(":
-                if depth == 0:
-                    if current.strip():
-                        tokens.append(current.strip())
-                        current = ""
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    inner_tokens = self.split_paren_tokens(paren_content)
-                    tokens.append(tuple(inner_tokens))
-                    paren_content = ""
-            elif depth > 0:
-                paren_content += char
-            elif in_quotes:
-                current += char
-            elif char.isspace():
+    for char in instruction:
+        if char == '"' and depth == 0:
+            if in_quotes:
                 if current.strip():
                     tokens.append(current.strip())
                     current = ""
+                in_quotes = False
             else:
-                current += char
+                if current.strip():
+                    tokens.append(current.strip())
+                    current = ""
+                in_quotes = True
+            continue
+        if char == "(":
+            if depth == 0:
+                if current.strip():
+                    tokens.append(current.strip())
+                    current = ""
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                inner_tokens = resolve_expr(paren_content.split(), game_state, player)
+                tokens.append(inner_tokens)
+                paren_content = ""
+        elif depth > 0:
+            paren_content += char
+        elif in_quotes:
+            current += char
+        elif char.isspace():
+            if current.strip():
+                tokens.append(current.strip())
+                current = ""
+        else:
+            current += char
 
-        if current.strip():
-            tokens.append(current.strip())
+    if current.strip():
+        tokens.append(current.strip())
 
-        return tokens
+    print(tokens)
+    return tokens
 
-    def parse_single(self, instruction) -> dict[str, Any] | bool | None:
-        """
-        Parses single instructions into separate values.
 
-        :param instruction: The instruction to be parsed.
-        :type instruction: str
-        """
-        result = {
-            "trigger": None,
-            "raw": instruction,
-            "action": None,
-            "field": None,
-            "amount": None,
-            "name": None,
-            "target_type": None,
-        }
+def parse_single(instruction, game_state: Dict[str, Any], player: str) -> dict[str, Any] | bool | None:
+    """
+    Parses single instructions into separate values.
 
-        if instruction.strip() in self.STATIC_ABILITIES:
-            result["action"] = "static"
-            result["status"] = instruction.strip()
-            return result
+    :param instruction: The instruction to be parsed.
+    :type instruction: str
+    :param game_state: The game state.
+    :type game_state: Dict[str, Any]
+    :param player: The player to parse.
+    :type player: str
+    """
+    result = {
+        "trigger": None,
+        "raw": instruction,
+        "action": None,
+        "field": None,
+        "amount": None,
+        "name": None,
+        "target_type": None,
+    }
 
-        tokens = self.tokenise(instruction)
-        if not tokens:
-            return None
-
-        index = 0
-
-        if index >= len(tokens):  # No more tokens to parse, return
-            return result
-
-        if tokens[index].endswith("?"):
-            result["trigger"] = tokens[index]
-            index += 1
-
-        # Tap for colour
-        if tokens[index] == "for":
-            result["require"] = True
-            index += 1
-            result["require_number"] = tokens[index]
-            index += 1
-            result["require_colour"] = tokens[index]
-            index += 1
-
-        action = tokens[index]
-        result["action"] = action
-        index += 1
-
-        # Is it a modifier-based action?
-        if action in self.MODIFIERS:
-            result["field"] = tokens[index]
-            index += 1
-
-            # Check for integer value to increment by
-            if index < len(tokens):
-                if isinstance(tokens[index], tuple):
-                    result["amount"] = tokens[index]  # Resolve expression later
-                else:
-                    result["amount"] = int(tokens[index])
-                index += 1
-
-            # Check for a specific target name
-            if index < len(tokens):
-                name = tokens[index]
-                if name not in self.TARGET_TYPES and "/" not in name:
-                    result["name"] = name
-                    index += 1
-
-            # Check for whether a target is required
-            if index < len(tokens):
-                if tokens[index] == "creatureid":
-                    result["creatureid"] = True
-                    index += 1
-                else:
-                    target_token = tokens[index]
-                    if '/' in target_token:
-                        result["target_type"] = target_token.split('/')
-                        index += 1
-                    elif target_token in self.TARGET_TYPES:
-                        result["target_type"] = target_token
-                        index += 1
-
-            # Check whether or not global/all is included
-            if index < len(tokens):
-                if tokens[index] == "all":  # All means EVERY single active creature
-                    result["all"] = True
-                elif tokens[index] == "global":
-                    result["global"] = True # Global means ONLY the player's creatures
-
-        # Generates mana
-        elif action == 'gen':
-            amount = 1
-            colors = []
-            if index < len(tokens):
-                if type(tokens[index]) == tuple:
-                    result["amount"] = tokens[index]
-                    index += 1
-                else:
-                    amount = int(tokens[index])
-                    index += 1
-                if index < len(tokens):
-                    colors = tokens[index].split('/')
-
-            result['field'] = 'mana'
-            result['value'] = colors
-            result['amount'] = amount
-
-        # General commands
-        elif action in ["draw", "discard", "heal", "revive", "nomanareset", "invuln"]:
-            if index < len(tokens):
-                if type(tokens[index]) == tuple:
-                    result["amount"] = tokens[index]
-                    index += 1
-
-                if tokens[index] == "creatureid":
-                    result["creatureid"] = True
-                    index += 1
-
-                elif tokens[index] == "global":
-                    result["global"] = True
-                    index += 1
-
-                elif tokens[index] == "all":
-                    result["all"] = True
-                    index += 1
-
-                elif tokens[index].isdigit():
-                    result["amount"] = tokens[index]
-                    index += 1
-
-        # Creates a card
-        elif action == "create":
-            if index < len(tokens):
-                if type(tokens[index]) == tuple:
-                    result["amount"] = tokens[index]
-                    index += 1
-                else:
-                    amount = int(tokens[index])
-                    index += 1
-
-                result["name"] = tokens[index]
-                index += 1
-
-            if action == "nomanareset":
-                result["amount"] = True
-
-        # Applies an effect onto a card
-        elif action == "apply":
-            if index < len(tokens):
-                result['status'] = tokens[index]
-                index += 1
-
-                if tokens[index] == "creatureid":
-                    result["creatureid"] = True
-                    index += 1
-
-                else:
-                    target_token = tokens[index]
-                    if '/' in target_token:
-                        result['target_type'] = target_token.split('/')
-                        index += 1
-
-        # Increase/decrease stats for spell cards
-        # Syntax should be something like castinc creatureid att 4
-        # Permanent increase
-        elif action in ["castinc", "castdec"]:
-            if index < len(tokens):
-                if tokens[index] == "creatureid":
-                    result["creatureid"] = True
-                    index += 1
-
-                result["field"] = tokens[index]
-                index += 1
-                result["amount"] = tokens[index]
-                index += 1
-
-        # Morphs a creature
-        elif action == "morph":
-            if index < len(tokens):
-                if tokens[index] == "creatureid":
-                    result["creatureid"] = True
-                    index += 1
-
-                result["amount"] = tokens[index]
-
-        # Return the parsed result for any action branch
+    if instruction.strip() in STATIC_ABILITIES:
+        result["action"] = "static"
+        result["status"] = instruction.strip()
         return result
 
-    # @staticmethod
-    # def split_paren_tokens(paren_content: str) -> list:
-    #     """
-    #     Splits the tokens in parenthesis.
-    #
-    #     :param paren_content: The content inside the paranthesis to tokenise.
-    #     :type paren_content: str
-    #     """
-    #     tokens = []
-    #     current = ""
-    #     in_quotes = False
-    #
-    #     for char in paren_content:
-    #         if char == '"':
-    #             in_quotes = not in_quotes
-    #             continue
-    #         if char.isspace() and not in_quotes:
-    #             if current.strip():
-    #                 tokens.append(current.strip())
-    #                 current = ""
-    #         else:
-    #             current += char
-    #
-    #     if current.strip():
-    #         tokens.append(current.strip())
-    #
-    #     return tokens
+    tokens = tokenise(instruction, game_state, player)
+    if not tokens:
+        return None
 
-    def get_triggers(self) -> list:
-        """
-        Returns a list of triggers for a given string.
+    index = 0
 
-        :param effect: The effect string to parse.
-        :type effect: str
-        """
-        instructions = self.parse()
-        return instructions
+    if index >= len(tokens):  # No more tokens to parse, return
+        return result
 
-    def get_static_abilities(self, effect):
-        """
-        Returns a list of static abilities for a given string.
+    if tokens[index].endswith("?"):
+        result["trigger"] = tokens[index]
+        index += 1
 
-        :param effect: The effect string to parse.
-        :type effect: str
-        """
-        instructions = self.parse_single(effect)
-        return instructions
+    # Tap for colour
+    if tokens[index] == "for":
+        result["require"] = True
+        index += 1
+        result["require_number"] = tokens[index]
+        index += 1
+        result["require_colour"] = tokens[index]
+        index += 1
+
+    action = tokens[index]
+    result["action"] = action
+    index += 1
+
+    # Is it a modifier-based action?
+    if action in MODIFIERS:
+        result["field"] = tokens[index]
+        index += 1
+
+        # Check for integer value to increment by
+        if index < len(tokens):
+            if isinstance(tokens[index], tuple):
+                result["amount"] = tokens[index]  # Resolve expression later
+            else:
+                result["amount"] = int(tokens[index])
+            index += 1
+
+        # Check for a specific target name
+        if index < len(tokens):
+            name = tokens[index]
+            if name not in TARGET_TYPES and "/" not in name:
+                result["name"] = name
+                index += 1
+
+        # Check for whether a target is required
+        if index < len(tokens):
+            if tokens[index] == "creatureid":
+                result["creatureid"] = True
+                index += 1
+            else:
+                target_token = tokens[index]
+                if '/' in target_token:
+                    result["target_type"] = target_token.split('/')
+                    index += 1
+                elif target_token in TARGET_TYPES:
+                    result["target_type"] = target_token
+                    index += 1
+
+        # Check whether or not global/all is included
+        if index < len(tokens):
+            if tokens[index] == "all":  # All means EVERY single active creature
+                result["all"] = True
+            elif tokens[index] == "global":
+                result["global"] = True # Global means ONLY the player's creatures
+
+    # Generates mana
+    elif action == 'gen':
+        amount = 1
+        colors = []
+        if index < len(tokens):
+            if isinstance(tokens[index], tuple):
+                result["amount"] = tokens[index]
+                index += 1
+            else:
+                amount = int(tokens[index])
+                index += 1
+            if index < len(tokens):
+                colors = tokens[index].split('/')
+
+        result['field'] = 'mana'
+        result['value'] = colors
+        result['amount'] = amount
+
+    # General commands
+    elif action in ["draw", "discard", "heal", "revive", "nomanareset", "invuln"]:
+        if index < len(tokens):
+            if isinstance(tokens[index], tuple):
+                result["amount"] = tokens[index]
+                index += 1
+
+            elif tokens[index] == "creatureid":
+                result["creatureid"] = True
+                index += 1
+
+            elif tokens[index] == "global":
+                result["global"] = True
+                index += 1
+
+            elif tokens[index] == "all":
+                result["all"] = True
+                index += 1
+
+            elif tokens[index].isdigit():
+                result["amount"] = tokens[index]
+                index += 1
+
+    # Creates a card
+    elif action == "create":
+        if index < len(tokens):
+            if isinstance(tokens[index], tuple):
+                result["amount"] = tokens[index]
+                index += 1
+            else:
+                amount = int(tokens[index])
+                index += 1
+
+            result["name"] = tokens[index]
+            index += 1
+
+        if action == "nomanareset":
+            result["amount"] = True
+
+    # Applies an effect onto a card
+    elif action == "apply":
+        if index < len(tokens):
+            result['status'] = tokens[index]
+            index += 1
+
+            if tokens[index] == "creatureid":
+                result["creatureid"] = True
+                index += 1
+
+            else:
+                target_token = tokens[index]
+                if '/' in target_token:
+                    result['target_type'] = target_token.split('/')
+                    index += 1
+
+    # Increase/decrease stats for spell cards
+    # Syntax should be something like castinc creatureid att 4
+    # Permanent increase as opposed to a temporary increase
+    elif action in ["castinc", "castdec"]:
+        if index < len(tokens):
+            if tokens[index] == "creatureid":
+                result["creatureid"] = True
+                index += 1
+
+            result["field"] = tokens[index]
+            index += 1
+            result["amount"] = tokens[index]
+            index += 1
+
+    # Morphs a creature
+    elif action == "morph":
+        if index < len(tokens):
+            if tokens[index] == "creatureid":
+                result["creatureid"] = True
+                index += 1
+
+            result["amount"] = tokens[index]
+
+    # Return the parsed result for any action branch
+    return result

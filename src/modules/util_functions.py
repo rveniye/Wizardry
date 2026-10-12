@@ -4,22 +4,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.cards import *
 from src.card_index import *
-from src.modules.w_parser import *
 import copy
 from typing import Dict, Any
 
 
-def update_card(card: Card, trigger: str, game_state: Dict[str, Any], player: str) -> CreatureCard:
-    """
-    Updates the card after executing the effect. Works only for Creature cards.
+# def update_card(card: Card, trigger: str, game_state: Dict[str, Any], player: str) -> CreatureCard:
+#     """
+#     Updates the card after executing the effect. Works only for Creature cards.
+#
+#     :param card: The card to update.
+#     :type card: Card
+#     :param game_state
+#     """
 
-    :param card: The card to update.
-    :type card: Card
-    :param game_state
-    """
 
-
-def resolve_expr(expr: str, game_state: Dict[str, Any], player: str) -> int:
+def resolve_expr(expr: list, game_state: Dict[str, Any], player: str) -> int:
     """
     Resolves a tuple expression.
 
@@ -30,13 +29,10 @@ def resolve_expr(expr: str, game_state: Dict[str, Any], player: str) -> int:
     :param player: The player's move.
     :type player: str
     """
-    if type(expr) != tuple or len(expr) == 0:
-        return 0
-    
     if len(expr) >= 3 and expr[1] == "count":
         place = expr[0]
         subject = expr[2]
-        if type(subject) == str:
+        if subject == str:
             subject = subject.strip('"').strip("'")
 
         player_data = game_state[player]
@@ -49,19 +45,22 @@ def resolve_expr(expr: str, game_state: Dict[str, Any], player: str) -> int:
             cards = player_data.get(place, [])
             count = 0
             for card in cards:
-                if type(card) == dict and card.get("name") == subject:
-                    count += 1
-                elif hasattr(card, "name") and card.name == "subject":
-                    count += 1
+                for _, value in card.items():
+                    print(value)
+                    if type(card) == dict and value.get("name").lower() == subject:
+                        count += 1
+                    # elif hasattr(card, "name") and card.name == "subject":
+                    #     count += 1
 
             return count
 
     return 0
 
+
 def reconstruct_card(card: Dict[str, Any]) -> Card:
     card_type = card.get("type")
     if card_type == "Land":
-        return_card = SummonCard(
+        return_card = LandCard(
             name=card.get("name"),
             generic_mana=card.get("generic_mana"),
             sp_mana=card.get("sp_mana"),

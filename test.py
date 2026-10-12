@@ -1,12 +1,10 @@
-from game import GameEngine
-from src import cards
-from src import card_index
-
-from src.modules.w_parser import *
-
-from copy import deepcopy
-import random
+from src.modules.w_parser import parse
+import json
 
 
-my_parser = Parser().get_triggers("tap? gen 1 mana; summon? haste")
+with open("db/fsh2848/game_state.json", "r") as f:
+    game_state = json.load(f)
+
+
+my_parser = parse("attacking? inc att (graveyard count skeleton)", game_state, game_state["current_player"])
 print(my_parser)

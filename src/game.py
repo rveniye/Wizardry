@@ -5,7 +5,7 @@ import json
 
 from pathlib import Path
 from src.card_index import *
-from src.modules.utils import *
+from src.modules.util_functions import *
 
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -20,6 +20,7 @@ class GameEngine:
         The cursor for the game engine.
         """
 
+    @staticmethod
     def start_game(self, game_key: str, p1: str, p2: str, p1_deck: list[CreatureCard | LandCard], p2_deck: list[Card]) -> 'GameEngine':
         """
         Initialises a new game instance
@@ -55,31 +56,13 @@ class GameEngine:
             if card.card_type == "Land":
                 p1_data[p1]["deck"].append(
                     { str(card.id):
-                        {
-                            "name": card.name,
-                            "generic_mana": card.generic_mana,
-                            "sp_mana": card.sp_mana,
-                            "description": card.description,
-                            "tapped": card.tapped,
-                            "statuses": card.statuses,
-                            "effect": card.effect,
-                        }
+                        card.to_dict()
                     }
                 )
             elif card.card_type == "Creature":
                 p1_data[p1]["deck"].append(
                     { str(card.id):
-                        {
-                            "name": card.name,
-                            "attack": card.attack,
-                            "defence": card.defence,
-                            "generic_mana": card.generic_mana,
-                            "sp_mana": card.sp_mana,
-                            "description": card.description,
-                            "tapped": card.tapped,
-                            "statuses": card.statuses,
-                            "effect": card.effect,
-                        }
+                        card.to_dict()
                     }
                 )
             i += 1
@@ -96,6 +79,7 @@ class GameEngine:
                         "blue_mana": 0,
                         "red_mana": 0,
                         "green_mana": 0
+                        
                     }
                 }
 
@@ -106,13 +90,7 @@ class GameEngine:
                 p2_data[p2]["deck"].append(
                     { str(card.id):
                         {
-                            "name": card.name,
-                            "generic_mana": card.generic_mana,
-                            "sp_mana": card.sp_mana,
-                            "description": card.description,
-                            "tapped": card.tapped,
-                            "statuses": card.statuses,
-                            "effect": card.effect,
+                            card.to_dict()
                         }
                     }
                 )
@@ -121,15 +99,7 @@ class GameEngine:
                 p2_data[p2]["deck"].append(
                     { str(card.id):
                         {
-                            "name": card.name,
-                            "attack": card.attack,
-                            "defence": card.defence,
-                            "generic_mana": card.generic_mana,
-                            "sp_mana": card.sp_mana,
-                            "description": card.description,
-                            "tapped": card.tapped,
-                            "statuses": card.statuses,
-                            "effect": card.effect,
+                            card.to_dict()
                         }
                     }
                 )
@@ -140,6 +110,7 @@ class GameEngine:
             "current_player": p1,
             "cooldowns": {},
         }
+        
         state.update(p1_data)
         state.update(p2_data)
 
