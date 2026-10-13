@@ -46,7 +46,6 @@ def resolve_expr(expr: list, game_state: Dict[str, Any], player: str) -> int:
             count = 0
             for card in cards:
                 for _, value in card.items():
-                    print(value)
                     if type(card) == dict and value.get("name").lower() == subject:
                         count += 1
                     # elif hasattr(card, "name") and card.name == "subject":

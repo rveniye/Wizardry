@@ -34,7 +34,7 @@ FIELDS = ["att", "end"]
 TARGET_TYPES = ["creatureid", "player"]
 
 
-def parse(effect_string, game_state: Dict[str, Any], player: str) -> list:
+def parse(effect_string: str, game_state: Dict[str, Any], player: str) -> list:
     """
     Returns a list of parsed instructions to process.
 
@@ -114,7 +114,6 @@ def tokenise(instruction: str, game_state: Dict[str, Any], player: str) -> list:
     if current.strip():
         tokens.append(current.strip())
 
-    print(tokens)
     return tokens
 
 
