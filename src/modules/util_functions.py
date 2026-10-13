@@ -54,27 +54,3 @@ def resolve_expr(expr: list, game_state: Dict[str, Any], player: str) -> int:
             return count
 
     return 0
-
-
-def reconstruct_card(card: Dict[str, Any]) -> Card:
-    card_type = card.get("type")
-    if card_type == "Land":
-        return_card = LandCard(
-            name=card.get("name"),
-            generic_mana=card.get("generic_mana"),
-            sp_mana=card.get("sp_mana"),
-            description=card.get("description"),
-            effect=card.get("effect")
-        )
-
-    elif card_type == "Creature":
-        return_card = CreatureCard(
-            name=card.get("name"),
-            generic_mana=card.get("generic_mana"),
-            sp_mana=card.get("sp_mana"),
-            description=card.get("description"),
-            effect=card.get("effect")
-        )
-    
-    return return_card
-

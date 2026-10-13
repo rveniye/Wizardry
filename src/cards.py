@@ -70,7 +70,7 @@ class LandCard(Card):
         """
         Returns a dictionary representation of the card.
         
-        :rtype: dict
+        :rtype: Dict[str, Any]
         """
         data = super().to_dict()
         return data

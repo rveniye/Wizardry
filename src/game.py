@@ -1,148 +1,57 @@
-import sys
-import os
-import copy
-import json
-
-from pathlib import Path
-from src.card_index import *
-from src.modules.util_functions import *
+from cards import Card
 
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-
-# TODO: Game setup
-# TODO: Core game loop (playing cards, blocking, etc.)
-
-class GameEngine:
-    def __init__(self) -> None:
+class Game:
+    def __init__(self, p1_name: str, p2_name: str, p1_deck, p2_deck):
         """
-        The cursor for the game engine.
-        """
+        Initialises a game instance to hold objects in memory, which is way faster than standard databases.
 
-    @staticmethod
-    def start_game(self, game_key: str, p1: str, p2: str, p1_deck: list[CreatureCard | LandCard], p2_deck: list[Card]) -> 'GameEngine':
+        :param p1_deck: The first player's deck (this is the player that goes first)
+        :param p2_deck: The second player's deck 
         """
-        Initialises a new game instance
+        self.p1_deck = p1_deck
+        self.p2_deck = p2_deck
+        self.p1_graveyard = {}
+        self.p2_graveyard = {}
 
-        :param p1: The first player of the game (this player starts)
-        :param p2: The second player of the game
-        :param p1_deck: The deck for the first player
-        :param p2_deck: The deck for the second player
-        :param game_key: The unique ID for the game.
-        :type game_key: str
-        """
+        self.p1_hand = {}
+        self.p2_hand = {}
+        self.p1_lands = {}
+        self.p2_lands = {}
+
+        self.p1_active_creatures = {}
+        self.p2_active_creatures = {}
         
-        # Setup game state
-        # Start with player 1
-        p1_data = { p1:
-                    {
-                        "deck": [],
-                        "hand": [],
-                        "battlefield": [],
-                        "lands": [],
-                        "hp": 20,
-                        "graveyard": [],
-                        "blue_mana": 0,
-                        "red_mana": 0,
-                        "green_mana": 0
-                    }
-                }
-        i = 0
-
-        for card in p1_deck:
-            card.id = i
-            
-            if card.card_type == "Land":
-                p1_data[p1]["deck"].append(
-                    { str(card.id):
-                        card.to_dict()
-                    }
-                )
-            elif card.card_type == "Creature":
-                p1_data[p1]["deck"].append(
-                    { str(card.id):
-                        card.to_dict()
-                    }
-                )
-            i += 1
-
-        # Next setup for player 2
-        p2_data = { p2:
-                    {
-                        "deck": [],
-                        "hand": [],
-                        "battlefield": [],
-                        "lands": [],
-                        "hp": 20,
-                        "graveyard": [],
-                        "blue_mana": 0,
-                        "red_mana": 0,
-                        "green_mana": 0
-                        
-                    }
-                }
-
-        for card in p2_deck:
-            card.id = i
-            
-            if card.card_type == "Land":
-                p2_data[p2]["deck"].append(
-                    { str(card.id):
-                        {
-                            card.to_dict()
-                        }
-                    }
-                )
+        self.attacking = {}
+        self.blocking = {}
                 
-            elif card.card_type == "Creature":
-                p2_data[p2]["deck"].append(
-                    { str(card.id):
-                        {
-                            card.to_dict()
-                        }
-                    }
-                )
-            i += 1
-
-        # Setup game files
-        state = {
-            "current_player": p1,
-            "cooldowns": {},
+        self.cooldowns = {}
+        self.graveyard = []
+        
+        self.p1_mana = {
+            "red": 0,
+            "blue": 0,
+            "green": 0
         }
         
-        state.update(p1_data)
-        state.update(p2_data)
+        self.p1_mana = {
+                    "red": 0,
+                    "blue": 0,
+                    "green": 0
+        }
 
-        if not os.path.isdir(f"db//{game_key}"):
-            os.mkdir(f"db//{game_key}")
+    def play_card(self):
+        pass
+    
+    def play_land(self):
+        pass
+
+    def tap_land(self):
+        pass
+
+    def attack_with(self):
+        pass
+
+    def defend_with(self):
+        pass
         
-        with open(f"db//{game_key}//game_state.json", "w") as f:
-            json.dump(state, f, indent=4)
-        
-        print(f"Game {game_key} created.")
-
-        return self
-
-    @staticmethod
-    def get_state(game_key: str) -> Dict[str, Any]:
-        """
-        Returns the game state as a dictionary.
-
-        :param game_key: The unique ID for the game.
-        :type game_key: str
-        """
-        with open(f"db//{game_key}//game_state.json", "r") as f:
-            return json.load(f)
-        
-    def play_land(self, game_key: str, ID: str, player: str):
-        """
-        Plays a land into the player's territory.
-
-        :param game_key: The unique ID for the game.
-        :param ID: The ID of the land that the player uses.
-        :param player: The player that uses the land.
-        :type game_key: str
-        """
-        game_state = self.get_state(game_key)
-
