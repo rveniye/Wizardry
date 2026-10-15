@@ -51,53 +51,42 @@ class Game:
         Returns:
             bool: Whether the move is legal.
         """
-        target_card: Card = self.decks[player][card_id]
-        if not target_card:
+        target_card = self.hand[player].get(card_id)
+        if target_card is None:
             return False
-        
+ 
+        # Lands are free to play.
+        if target_card.type == "Land":
+            return True
+ 
         # Check if the player has enough mana to play
-        x = 0
-        for _, v in self.mana_pools[player].items():
-            x += v
-
-        if x < target_card.generic_mana + 1:
-            return False
-
-        return True
+        total_mana = sum(self.mana_pools[player].values())
+        return total_mana >= target_card.generic_mana + 1
             
     def play_creature(self, player: str, card_id: str) -> bool:
         """
         
         """
-        if self.is_in_hand(player, card_id):
-            for key, value in self.hand[player]:
-                if key == card_id:
-                    self.active_creatures[player].update({key: value})
-                    self.hand[player].pop(card_id, None)
-                else:
-                    return False
-
+        if not self.is_in_hand(player, card_id):
+            return False
+ 
+        self.active_creatures[player][card_id] = self.hand[player].pop(card_id)
         return True
     
     def play_land(self, player: str, card_id: str) -> bool:
-        if self.is_in_hand(player, card_id):
-            for key, value in self.hand[player]:
-                if key == card_id:
-                    self.lands[player].update({key: value})
-                    self.hand[player].pop(card_id, None)
-                else:
-                    return False
-
+        if not self.is_in_hand(player, card_id):
+            return False
+ 
+        self.lands[player][card_id] = self.hand[player].pop(card_id)
         return True
 
     def tap_land(self, player: str, card_id: str):
-        # Check if the card is in the player's land.
-        for k, v in self.lands[player]:
-            if k == card_id:
-                v.tapped = 1    # Makes the card tapped.
-                return True
-
-        return False
+        land = self.lands[player].get(card_id)
+        if land is None or land.tapped:
+            return False
+ 
+        land.tapped = 1    # Makes the card tapped.
+        return True
 
     def attack_with(self):
         pass
