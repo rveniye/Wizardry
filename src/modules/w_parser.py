@@ -20,7 +20,7 @@ Additional syntax:
 & - And
 """
 
-
+from src.game import Game
 from typing import Any, Dict
 from modules.util_functions import resolve_expr
 
@@ -34,16 +34,17 @@ FIELDS = ["att", "end"]
 TARGET_TYPES = ["creatureid", "player"]
 
 
-def parse(effect_string: str, game_state: Dict[str, Any], player: str) -> list:
+def parse(effect_string: str, game_state: Game, player: str) -> list:
     """
     Returns a list of parsed instructions to process.
 
-    :param effect_string: The effect to parse.
-    :type effect_string: str
-    :param game_state: The game state.
-    :type game_state: Dict[str, Any]
-    :param player: The player to parse.
-    :type player: str
+    Args:
+        effect_string (str): The string of the effect to parse.
+        game_state (Game): The game object associated with the game.
+        player (str): The current player.
+
+    Returns:
+        list: A list of parsed expressions.
     """
     instructions = []
     raw_instructions = effect_string.split(";")
@@ -58,16 +59,17 @@ def parse(effect_string: str, game_state: Dict[str, Any], player: str) -> list:
     return instructions
 
 
-def tokenise(instruction: str, game_state: Dict[str, Any], player: str) -> list:
+def tokenise(instruction: str, game_state: Game, player: str) -> list:
     """
     Splits a given instruction into individual tokens for processing.
 
-    :param instruction: The instruction to be tokenised.
-    :type instruction: str
-    :param game_state: The game state.
-    :type game_state: Dict[str, Any]
-    :param player: The player to parse.
-    :type player: str
+    Args:
+        instruction (str): The instruction to be tokenised.
+        game_state (Game): The game object associated with the game.
+        player (str): The current player.
+
+    Returns:
+        list: A list of tokens for processing.
     """
     tokens = []
     current = ""
@@ -117,16 +119,17 @@ def tokenise(instruction: str, game_state: Dict[str, Any], player: str) -> list:
     return tokens
 
 
-def parse_single(instruction, game_state: Dict[str, Any], player: str) -> dict[str, Any] | bool | None:
+def parse_single(instruction, game_state: Game, player: str) -> dict[str, Any]:
     """
     Parses single instructions into separate values.
 
-    :param instruction: The instruction to be parsed.
-    :type instruction: str
-    :param game_state: The game state.
-    :type game_state: Dict[str, Any]
-    :param player: The player to parse.
-    :type player: str
+    Args:
+        instruction (str): The instruction to be parsed.
+        game_state (Game): The game object associated with the current game.
+        player (str): The current player.
+    
+    Returns:
+        dict[str, Any]: The dictionary with the associated key/value pairs.
     """
     result = {
         "trigger": None,
@@ -134,8 +137,6 @@ def parse_single(instruction, game_state: Dict[str, Any], player: str) -> dict[s
         "action": None,
         "field": None,
         "amount": None,
-        "name": None,
-        "target_type": None,
     }
 
     if instruction.strip() in STATIC_ABILITIES:
@@ -208,7 +209,7 @@ def parse_single(instruction, game_state: Dict[str, Any], player: str) -> dict[s
             if tokens[index] == "all":  # All means EVERY single active creature
                 result["all"] = True
             elif tokens[index] == "global":
-                result["global"] = True # Global means ONLY the player's creatures
+                result["global"] = True # Global means ONLY the player's creatures (16.10.26 what was I thinking with this naming convention)
 
     # Generates mana
     elif action == 'gen':
@@ -308,3 +309,14 @@ def parse_single(instruction, game_state: Dict[str, Any], player: str) -> dict[s
 
     # Return the parsed result for any action branch
     return result
+
+
+################## 
+# ERROR HANDLING #
+##################
+
+class ParseError(Exception):
+    """An exception that occurs when handling parsing."""
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)

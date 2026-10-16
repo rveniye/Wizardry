@@ -1,4 +1,4 @@
-from cards import Card
+from src.cards import Card
         
     
 class Game:
@@ -63,24 +63,54 @@ class Game:
         total_mana = sum(self.mana_pools[player].values())
         return total_mana >= target_card.generic_mana + 1
             
-    def play_creature(self, player: str, card_id: str) -> bool:
+    def play_creature(self, player: str, card_id: str, payment: dict) -> bool:
         """
-        
+        Plays a creature from the hand into the active_creatures pile.
+
+        Args:
+            player (str): The name of the current player.
+            card_id (str): The id of the card being played.
+            payment (dict): The colours of mana being spent, in the format {'red': x, 'blue': y, 'green': z} - obviously the required colour mana has to be spent.
+
+        Return:
+            bool: Whether the move is legal.
         """
         if not self.is_in_hand(player, card_id):
             return False
  
         self.active_creatures[player][card_id] = self.hand[player].pop(card_id)
+        self.mana_pools
         return True
     
     def play_land(self, player: str, card_id: str) -> bool:
+        """
+        Plays a land from the hand into the lands pile.
+
+        Args:
+            player (str): The name of the current player.
+            card_id (str): The id of the card being played.
+
+        Return:
+            bool: Whether the move is legal.
+        """
         if not self.is_in_hand(player, card_id):
             return False
  
         self.lands[player][card_id] = self.hand[player].pop(card_id)
         return True
 
-    def tap_land(self, player: str, card_id: str):
+    def tap_land(self, player: str, card_id: str) -> bool:
+        """
+        Taps a card to execute its abilities.
+
+        Args:
+            player (str): The name of the current player.
+            card_id (str): The id of the card being played.
+
+        Return:
+            bool: Whether the move is legal.
+            
+        """
         land = self.lands[player].get(card_id)
         if land is None or land.tapped:
             return False

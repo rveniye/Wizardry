@@ -4,8 +4,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.cards import *
 from src.card_index import *
-import copy
+# import copy
 from typing import Dict, Any
+
+from ..game import Game
+from w_parser import *
 
 
 # def update_card(card: Card, trigger: str, game_state: Dict[str, Any], player: str) -> CreatureCard:
@@ -18,16 +21,17 @@ from typing import Dict, Any
 #     """
 
 
-def resolve_expr(expr: list, game_state: Dict[str, Any], player: str) -> int:
+def resolve_expr(expr: list, game_state: Game, player: str) -> int:
     """
     Resolves a tuple expression.
 
-    :param expr: The expression to resolve.
-    :type expr: str
-    :param game_state: The game state dictionary
-    :type game_state: Dict[str, Any]
-    :param player: The player's move.
-    :type player: str
+    Args:
+        expr (list): The expressions to parse. This would've been returned as a list due if one card has multiple abilities.
+        game_state (Game): The game object associated with the game.
+        player (str): The current player.
+
+    Returns:
+        int: The evaluated number.
     """
     if len(expr) >= 3 and expr[1] == "count":
         place = expr[0]
@@ -35,22 +39,58 @@ def resolve_expr(expr: list, game_state: Dict[str, Any], player: str) -> int:
         if subject == str:
             subject = subject.strip('"').strip("'")
 
-        player_data = game_state[player]
-
+        # Check for mana count
         if place == "mana":
             colour = subject.lower()
-            return player_data.get(f"{colour}_mana", 0)
+            return game_state.mana_pools[player][colour]
 
-        if place in ["graveyard", "deck", "hand"]:
-            cards = player_data.get(place, [])
-            count = 0
-            for card in cards:
-                for _, value in card.items():
-                    if type(card) == dict and value.get("name").lower() == subject:
-                        count += 1
-                    # elif hasattr(card, "name") and card.name == "subject":
-                    #     count += 1
+        # Check for other possible areas
+        count = 0
+        if place == "graveyard":
+            to_iter = game_state.graveyard[player]
 
-            return count
+        elif place == "deck":
+            to_iter = game_state.decks[player]
 
-    return 0
+        elif place == "hand":
+            to_iter = game_state.hand[player]
+
+        for _, v in to_iter.items():
+            if v.name == subject.lower():
+                count += 1
+
+        return count
+
+    else:
+        raise ParseError("Expected argument in format [place] [action] [subject].")
+
+
+def execute_card_ability(card_id: str, card: Card, game: Game, player: str, trigger: str):
+    """
+    Executes the card's ability.
+
+    Args:
+        card_id (str): The ID of the card that's being played
+        card (Card): The card object.
+        game (Game): The game object associated with the game.
+        player (str): The current player.
+        trigger (str): The trigger that's being fired.
+
+    Returns:
+        Good question
+    """
+    ability = parse(card.effect)
+
+    if ability[trigger]:
+        if ability["global"]:
+            pass
+        elif ability["all"]:
+            pass 
+        else:
+            if ability["action"] == "inc":
+                ability["field"] += ability["amount"]
+            elif ability["action"] == "dec":
+                ability["field"] -= ability["amount"]
+
+    else:
+        pass    # No abilities were activated.
