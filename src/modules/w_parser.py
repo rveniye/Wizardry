@@ -18,11 +18,21 @@ Additional syntax:
 
 / - Or
 & - And
+
+Card effects are written as a dict. Each key is a trigger and each value is the
+ability (or a list of abilities) that fires on it, without the trigger itself.
+Static abilities go under the key "None?"
+
+    effect={"None?": "entertap", "tap?": ["for 1 blue gen 2 green", "gen 1 blue"]}
+
+A plain "trigger? ability; ..." string is still accepted, so older effects keep working.
 """
 
 from src.game import Game
-from typing import Any, Dict
-from modules.util_functions import resolve_expr
+from typing import Any, Dict, Iterator, List, Union
+
+STATIC_TRIGGER = "None?"
+EffectDict = Dict[str, Union[str, List[str]]]
 
 
 TRIGGERS = ["tap?", "summon?", "enter?", "attacking?", "blocking?", "discard?"]
@@ -34,29 +44,78 @@ FIELDS = ["att", "end"]
 TARGET_TYPES = ["creatureid", "player"]
 
 
-def parse(effect_string: str, game_state: Game, player: str) -> list:
+def parse(effect: Union[EffectDict, str], game_state: Game, player: str) -> list:
     """
     Returns a list of parsed instructions to process.
 
     Args:
-        effect_string (str): The string of the effect to parse.
+        effect (dict | str): The card's effect. Either a {trigger: ability} dict
+            (static abilities under the key "None") or a legacy "trigger? ability; ..." string.
         game_state (Game): The game object associated with the game.
         player (str): The current player.
 
     Returns:
-        list: A list of parsed expressions.
+        list: A list of parsed expressions, in the same format as before.
     """
     instructions = []
-    raw_instructions = effect_string.split(";")
 
-    for instruction in raw_instructions:
-        instruction = instruction.strip()
-        if instruction:
-            parsed = parse_single(instruction, game_state, player)
-            if parsed:
-                instructions.append(parsed)
+    for instruction in _instructions_from(effect):
+        parsed = parse_single(instruction, game_state, player)
+        if parsed:
+            instructions.append(parsed)
 
     return instructions
+
+
+def _instructions_from(effect: Union[EffectDict, str]) -> Iterator[str]:
+    """
+    Turns an effect into the "trigger? ability" lines that parse_single reads in the order they were written (legacy abilities still work)
+
+    Args:
+        effect (Union[EffectDict, str]): The effect to be read
+
+    Returns:
+        Iterator[str]: The iter
+    """
+    if not effect:
+        return
+
+    # Legacy format: "trigger? ability; trigger? ability"
+    if isinstance(effect, str):
+        for instruction in effect.split(";"):
+            if instruction.strip():
+                yield instruction.strip()
+
+        return
+
+    if not isinstance(effect, dict):
+        raise ParseError(f"Expected the effect to be a dict, got {type(effect).__name__}.")
+
+    for trigger, abilities in effect.items():
+        if not isinstance(trigger, str):
+            raise ParseError(f"Trigger keys must be strings, got {trigger!r}. Use \"{STATIC_TRIGGER}\" for static abilities.")
+        
+        is_static = trigger == STATIC_TRIGGER
+
+        if not is_static and not trigger.endswith("?"):
+            raise ParseError(f"Trigger {trigger!r} should end with '?'.")
+
+        if isinstance(abilities, str):
+            abilities = [abilities]
+
+        for ability in abilities:
+            ability = ability.strip()
+
+            if not ability:
+                continue
+
+            if ability.split()[0].endswith("?"):
+                raise ParseError(f"{ability!r} starts with a trigger. Put the trigger in the dict key instead.")
+
+            if is_static:
+                yield ability
+            else:
+                yield f"{trigger} {ability}"
 
 
 def tokenise(instruction: str, game_state: Game, player: str) -> list:
@@ -90,26 +149,35 @@ def tokenise(instruction: str, game_state: Game, player: str) -> list:
                     current = ""
                 in_quotes = True
             continue
+
         if char == "(":
             if depth == 0:
                 if current.strip():
                     tokens.append(current.strip())
                     current = ""
             depth += 1
+
         elif char == ")":
             depth -= 1
             if depth == 0:
+                # Imported here rather than at the top: util_functions imports this
+                # module, so a top-level import would be circular.
+                from src.modules.util_functions import resolve_expr
                 inner_tokens = resolve_expr(paren_content.split(), game_state, player)
                 tokens.append(inner_tokens)
                 paren_content = ""
+
         elif depth > 0:
             paren_content += char
+
         elif in_quotes:
             current += char
+
         elif char.isspace():
             if current.strip():
                 tokens.append(current.strip())
                 current = ""
+
         else:
             current += char
 
@@ -132,7 +200,7 @@ def parse_single(instruction, game_state: Game, player: str) -> dict[str, Any]:
         dict[str, Any]: The dictionary with the associated key/value pairs.
     """
     result = {
-        "trigger": None,
+        "trigger": STATIC_TRIGGER,   # Replaced below if the instruction starts with a trigger
         "raw": instruction,
         "action": None,
         "field": None,
@@ -320,3 +388,4 @@ class ParseError(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
+        

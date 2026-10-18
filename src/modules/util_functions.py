@@ -2,13 +2,13 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.cards import *
+from src.cards import Card
 from src.card_index import *
 # import copy
-from typing import Dict, Any
+# from typing import Dict, Any
 
 from ..game import Game
-from w_parser import *
+from w_parser import parse, ParseError
 
 
 # def update_card(card: Card, trigger: str, game_state: Dict[str, Any], player: str) -> CreatureCard:
@@ -79,18 +79,4 @@ def execute_card_ability(card_id: str, card: Card, game: Game, player: str, trig
     Returns:
         Good question
     """
-    ability = parse(card.effect)
-
-    if ability[trigger]:
-        if ability["global"]:
-            pass
-        elif ability["all"]:
-            pass 
-        else:
-            if ability["action"] == "inc":
-                ability["field"] += ability["amount"]
-            elif ability["action"] == "dec":
-                ability["field"] -= ability["amount"]
-
-    else:
-        pass    # No abilities were activated.
+    pass
