@@ -28,12 +28,14 @@ Static abilities go under the key "None?"
 A plain "trigger? ability; ..." string is still accepted, so older effects keep working.
 """
 
-from src.game import Game
-from typing import Any, Dict, Iterator, List, Union
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Union
+
+if TYPE_CHECKING:
+    from src.game import Game
 
 STATIC_TRIGGER = "None?"
 EffectDict = Dict[str, Union[str, List[str]]]
-
 
 TRIGGERS = ["tap?", "summon?", "enter?", "attacking?", "blocking?", "discard?"]
 STATIC_ABILITIES = ["haste", "flying", "reach", "entertap", "unblockable", "trample", "invincible"]

@@ -1,4 +1,5 @@
 from typing import Any, Dict
+from src.modules.w_parser import parse
 
 
 class Card:
@@ -10,11 +11,13 @@ class Card:
         self.generic_mana = generic_mana
         self.sp_mana = sp_mana
         self.type = card_type
+
         self.description = description
         self.effect = effect
         self.tapped = 0     # 0 for untapped, 1 for tapped
         self.statuses = []
-        self.id = 0 
+
+        self.id = 0
 
     def to_dict(self) -> dict:
         """

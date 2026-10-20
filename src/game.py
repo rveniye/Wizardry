@@ -1,6 +1,6 @@
-from src.cards import Card
-        
-    
+from src.modules.w_parser import parse
+
+
 class Game:
     def __init__(self, p1_name: str, p2_name: str, p1_deck: list, p2_deck: list):
         """
@@ -11,16 +11,23 @@ class Game:
         """
         self.p1_name = p1_name
         self.p2_name = p2_name
-        self._creature_index = 1
+        self._index = 1
         self.decks = {p1_name: {}, p2_name: {}}
 
         for _ in p1_deck:
-            self.decks[p1_name][str(self._creature_index)] = _
-                        
+            self.decks[p1_name][str(self._index)] = _
+            self._index += 1
+
+        for _ in p2_deck:
+            self.decks[p2_name][str(self._index)] = _
+            self._index += 1
+
         self.graveyard = {p1_name: {}, p2_name: {}}
         self.hand = {p1_name: {}, p2_name: {}}
         self.lands = {p1_name: {}, p2_name: {}}
         self.active_creatures = {p1_name: {}, p2_name: {}}
+
+        self.card_abilities = {p1_name: {}, p2_name: {}}
         
         self.attacking = {}
         self.blocking = {}
@@ -39,6 +46,13 @@ class Game:
         }
 
         self.current_player = p1_name
+
+        # Iterate through each ID and Game Object
+        for k, v in self.decks[p1_name].items():
+            self.card_abilities[p1_name][k] = parse(v.effect, self, p1_name)
+
+        for k, v in self.decks[p1_name].items():
+            self.card_abilities[p2_name][k] = parse(v.effect, self, p2_name)
 
     def is_in_hand(self, player: str, card_id: str) -> bool:
         """
