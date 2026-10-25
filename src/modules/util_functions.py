@@ -79,5 +79,4 @@ def execute_card_ability(card_id: str, card: Card, game: Game, player: str, trig
     action_map = {
         "inc": increment_att,
         "dec": decrement_att,
-
     }

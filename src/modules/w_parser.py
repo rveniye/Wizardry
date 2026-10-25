@@ -30,64 +30,67 @@ A plain "trigger? ability; ..." string is still accepted, so older effects keep 
 
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Union
+from error_handling import ParseError
 
 if TYPE_CHECKING:
     from src.game import Game
 
+
 STATIC_TRIGGER = "None?"
 EffectDict = Dict[str, Union[str, List[str]]]
 
-TRIGGERS = ["tap?", "summon?", "enter?", "attacking?", "blocking?", "discard?"]
-STATIC_ABILITIES = ["haste", "flying", "reach", "entertap", "unblockable", "trample", "invincible"]
-ACTIONS = ["gen", "draw", "discard", "heal", "return", "count", "damage", "destroy", "apply", "kill", "morph", "revive", "nomanareset", "create"]
+TRIGGERS = ["tap?", "summon?", "enter?", "attack?", "block?", "discard?"]
+STATIC_ABILITIES = [
+    "haste", "flying", "reach", "entertap", "unblockable", "trample", "invincible", "vigilant"
+]
+ACTIONS = [
+    "gen", "draw", "discard", "heal", "return", "count", "damage", "destroy",
+    "apply", "kill", "morph", "revive", "nomanareset", "create", "invuln",
+    "castinc", "castdec",
+]
 MODIFIERS = ["inc", "dec"]
 PLACES = ["graveyard", "deck", "hand"]
 FIELDS = ["att", "end"]
 TARGET_TYPES = ["creatureid", "player"]
 
 
-def parse(effect: Union[EffectDict, str], game_state: Game, player: str) -> list:
+def parse(effect: Union[EffectDict, str], game_state: Game, player: str) -> list[dict[str, Any]]:
     """
-    Returns a list of parsed instructions to process.
-
+    Parse an effect into a list of normalised instruction dictionaries.
+    
     Args:
-        effect (dict | str): The card's effect. Either a {trigger: ability} dict
-            (static abilities under the key "None") or a legacy "trigger? ability; ..." string.
-        game_state (Game): The game object associated with the game.
+        effect (Union [EffectDict, str]): The effect to be parsed.
+        game_state (Game): The current game object.
         player (str): The current player.
 
     Returns:
-        list: A list of parsed expressions, in the same format as before.
+        list[dict[str, Any]]
     """
-    instructions = []
-
+    instructions: list[dict[str, Any]] = []
     for instruction in _instructions_from(effect):
         parsed = parse_single(instruction, game_state, player)
-        if parsed:
+        if parsed is not None:
             instructions.append(parsed)
-
     return instructions
 
 
 def _instructions_from(effect: Union[EffectDict, str]) -> Iterator[str]:
     """
-    Turns an effect into the "trigger? ability" lines that parse_single reads in the order they were written (legacy abilities still work)
-
+    Yield individual instruction strings, retaining legacy string support.
+    
     Args:
-        effect (Union[EffectDict, str]): The effect to be read
+        effect (Union[EffectDict, str]): The effect that needs to be yielded.
 
     Returns:
-        Iterator[str]: The iter
+        Iterator[str]
     """
     if not effect:
         return
 
-    # Legacy format: "trigger? ability; trigger? ability"
     if isinstance(effect, str):
         for instruction in effect.split(";"):
             if instruction.strip():
                 yield instruction.strip()
-
         return
 
     if not isinstance(effect, dict):
@@ -95,44 +98,45 @@ def _instructions_from(effect: Union[EffectDict, str]) -> Iterator[str]:
 
     for trigger, abilities in effect.items():
         if not isinstance(trigger, str):
-            raise ParseError(f"Trigger keys must be strings, got {trigger!r}. Use \"{STATIC_TRIGGER}\" for static abilities.")
-        
-        is_static = trigger == STATIC_TRIGGER
+            raise ParseError(
+                f"Trigger keys must be strings, got {trigger!r}. "
+                f'Use "{STATIC_TRIGGER}" for static abilities.'
+            )
 
-        if not is_static and not trigger.endswith("?"):
-            raise ParseError(f"Trigger {trigger!r} should end with '?'.")
+        is_static = trigger == STATIC_TRIGGER
+        if not is_static and trigger not in TRIGGERS:
+            raise ParseError(f"Unknown trigger {trigger!r}. Expected one of {TRIGGERS!r} or {STATIC_TRIGGER!r}.")
 
         if isinstance(abilities, str):
             abilities = [abilities]
+        elif not isinstance(abilities, list):
+            raise ParseError(f"Abilities for trigger {trigger!r} must be a string or list of strings.")
 
         for ability in abilities:
+            if not isinstance(ability, str):
+                raise ParseError(f"Ability values must be strings, got {type(ability).__name__}.")
             ability = ability.strip()
-
             if not ability:
                 continue
 
             if ability.split()[0].endswith("?"):
                 raise ParseError(f"{ability!r} starts with a trigger. Put the trigger in the dict key instead.")
-
-            if is_static:
-                yield ability
-            else:
-                yield f"{trigger} {ability}"
+            yield ability if is_static else f"{trigger} {ability}"
 
 
-def tokenise(instruction: str, game_state: Game, player: str) -> list:
+def tokenise(instruction: str, game_state: Game, player: str) -> list[Any]:
     """
-    Splits a given instruction into individual tokens for processing.
-
+    Split an instruction into tokens.
+    
     Args:
         instruction (str): The instruction to be tokenised.
-        game_state (Game): The game object associated with the game.
+        game_state (Game): The game object.
         player (str): The current player.
 
     Returns:
-        list: A list of tokens for processing.
+        list[Any]
     """
-    tokens = []
+    tokens: list[Any] = []
     current = ""
     depth = 0
     paren_content = ""
@@ -152,66 +156,80 @@ def tokenise(instruction: str, game_state: Game, player: str) -> list:
                 in_quotes = True
             continue
 
+        if in_quotes:
+            current += char
+            continue
+
         if char == "(":
             if depth == 0:
                 if current.strip():
                     tokens.append(current.strip())
                     current = ""
+                paren_content = ""
+            else:
+                paren_content += char
             depth += 1
+            continue
 
-        elif char == ")":
+        if char == ")":
+            if depth == 0:
+                raise ParseError(f"Unexpected ')' in instruction {instruction!r}.")
             depth -= 1
             if depth == 0:
-                # Imported here rather than at the top: util_functions imports this
-                # module, so a top-level import would be circular.
+                # Avoid circular import.
                 from src.modules.util_functions import resolve_expr
-                inner_tokens = resolve_expr(paren_content.split(), game_state, player)
-                tokens.append(inner_tokens)
+
+                tokens.append(resolve_expr(paren_content.split(), game_state, player))
                 paren_content = ""
+            else:
+                paren_content += char
+            continue
 
-        elif depth > 0:
+        if depth > 0:
             paren_content += char
-
-        elif in_quotes:
-            current += char
-
         elif char.isspace():
             if current.strip():
                 tokens.append(current.strip())
                 current = ""
-
         else:
             current += char
 
+    if in_quotes:
+        raise ParseError(f"Unclosed quote in instruction {instruction!r}.")
+    
+    if depth:
+        raise ParseError(f"Unclosed parenthesis in instruction {instruction!r}.")
+    
     if current.strip():
         tokens.append(current.strip())
 
     return tokens
 
 
-def parse_single(instruction, game_state: Game, player: str) -> dict[str, Any]:
-    """
-    Parses single instructions into separate values.
+def _require_token(tokens: list[Any], index: int, instruction: str, purpose: str) -> Any:
+    """Return a token or raise a readable parse error instead of IndexError."""
+    if index >= len(tokens):
+        raise ParseError(f"Missing {purpose} in instruction {instruction!r}.")
+    return tokens[index]
 
-    Args:
-        instruction (str): The instruction to be parsed.
-        game_state (Game): The game object associated with the current game.
-        player (str): The current player.
-    
-    Returns:
-        dict[str, Any]: The dictionary with the associated key/value pairs.
-    """
-    result = {
-        "trigger": STATIC_TRIGGER,   # Replaced below if the instruction starts with a trigger
+
+def parse_single(instruction: str, game_state: Game, player: str) -> dict[str, Any] | None:
+    """Parse one instruction into a normalised dictionary."""
+    instruction = instruction.strip()
+    if not instruction:
+        return None
+
+    result: dict[str, Any] = {
+        "trigger": STATIC_TRIGGER,
         "raw": instruction,
         "action": None,
         "field": None,
         "amount": None,
     }
 
-    if instruction.strip() in STATIC_ABILITIES:
+    if instruction in STATIC_ABILITIES:
         result["action"] = "static"
-        result["status"] = instruction.strip()
+        result["status"] = instruction
         return result
 
     tokens = tokenise(instruction, game_state, player)
@@ -219,175 +237,160 @@ def parse_single(instruction, game_state: Game, player: str) -> dict[str, Any]:
         return None
 
     index = 0
-
-    if index >= len(tokens):  # No more tokens to parse, return
-        return result
-
     if tokens[index].endswith("?"):
-        result["trigger"] = tokens[index]
+        trigger = tokens[index]
+        if trigger not in TRIGGERS:
+            raise ParseError(f"Unknown trigger {trigger!r} in instruction {instruction!r}.")
+        result["trigger"] = trigger
         index += 1
 
-    # Tap for colour
-    if tokens[index] == "for":
-        result["require"] = True
-        index += 1
-        result["require_number"] = tokens[index]
-        index += 1
-        result["require_colour"] = tokens[index]
-        index += 1
-
-    action = tokens[index]
-    result["action"] = action
+    action = _require_token(tokens, index, instruction, "action")
     index += 1
+    result["action"] = action
 
-    # Is it a modifier-based action?
     if action in MODIFIERS:
-        result["field"] = tokens[index]
+        result["field"] = _require_token(tokens, index, instruction, "field")
+        index += 1
+        if result["field"] not in FIELDS:
+            raise ParseError(f"Unknown field {result['field']!r} in instruction {instruction!r}.")
+
+        amount_token = _require_token(tokens, index, instruction, "amount")
+        result["amount"] = amount_token if isinstance(amount_token, tuple) else _parse_int(amount_token, instruction)
         index += 1
 
-        # Check for integer value to increment by
-        if index < len(tokens):
-            if isinstance(tokens[index], tuple):
-                result["amount"] = tokens[index]  # Resolve expression later
-            else:
-                result["amount"] = int(tokens[index])
-            index += 1
+        # if index < len(tokens):
+        #     name = tokens[index]
+        #     if name not in TARGET_TYPES and "/" not in str(name):
+        #         result["name"] = name
+        #         index += 1
 
-        # Check for a specific target name
         if index < len(tokens):
-            name = tokens[index]
-            if name not in TARGET_TYPES and "/" not in name:
-                result["name"] = name
-                index += 1
-
-        # Check for whether a target is required
-        if index < len(tokens):
-            if tokens[index] == "creatureid":
+            target_token = tokens[index]
+            if target_token == "creatureid":
                 result["creatureid"] = True
                 index += 1
-            else:
-                target_token = tokens[index]
-                if '/' in target_token:
-                    result["target_type"] = target_token.split('/')
-                    index += 1
-                elif target_token in TARGET_TYPES:
-                    result["target_type"] = target_token
-                    index += 1
+            elif "/" in str(target_token):
+                result["target_type"] = str(target_token).split("/")
+                index += 1
+            elif target_token in TARGET_TYPES:
+                result["target_type"] = target_token
+                index += 1
 
-        # Check whether or not global/all is included
         if index < len(tokens):
-            if tokens[index] == "all":  # All means EVERY single active creature
+            if tokens[index] == "all":
                 result["all"] = True
-            elif tokens[index] == "global":
-                result["global"] = True # Global means ONLY the player's creatures (16.10.26 what was I thinking with this naming convention)
-
-    # Generates mana
-    elif action == 'gen':
-        amount = 1
-        colors = []
-        if index < len(tokens):
-            if isinstance(tokens[index], tuple):
-                result["amount"] = tokens[index]
                 index += 1
-            else:
-                amount = int(tokens[index])
-                index += 1
-            if index < len(tokens):
-                colors = tokens[index].split('/')
-
-        result['field'] = 'mana'
-        result['value'] = colors
-        result['amount'] = amount
-
-    # General commands
-    elif action in ["draw", "discard", "heal", "revive", "nomanareset", "invuln"]:
-        if index < len(tokens):
-            if isinstance(tokens[index], tuple):
-                result["amount"] = tokens[index]
-                index += 1
-
-            elif tokens[index] == "creatureid":
-                result["creatureid"] = True
-                index += 1
-
             elif tokens[index] == "global":
                 result["global"] = True
                 index += 1
 
-            elif tokens[index] == "all":
-                result["all"] = True
+    elif action == "gen":
+        result["field"] = "mana"
+        result["value"] = []
+        result["amount"] = 1
+
+        if index < len(tokens):
+            amount_token = tokens[index]
+            if isinstance(amount_token, tuple):
+                result["amount"] = amount_token
+                index += 1
+            else:
+                result["amount"] = _parse_int(amount_token, instruction)
                 index += 1
 
-            elif tokens[index].isdigit():
-                result["amount"] = tokens[index]
+        if index < len(tokens):
+            result["value"] = str(tokens[index]).split("/")
+            index += 1
+
+    elif action in {"draw", "discard", "heal", "revive", "invuln"}:
+        if index < len(tokens):
+            token = tokens[index]
+            if isinstance(token, tuple):
+                result["amount"] = token
                 index += 1
 
-    # Creates a card
+            elif token == "creatureid":
+                result["creatureid"] = True
+                index += 1
+
+            elif token in {"global", "all"}:
+                result[token] = True
+                index += 1
+
+            elif str(token).isdigit():
+                result["amount"] = int(token)
+                index += 1
+
     elif action == "create":
-        if index < len(tokens):
-            if isinstance(tokens[index], tuple):
-                result["amount"] = tokens[index]
-                index += 1
-            else:
-                amount = int(tokens[index])
-                index += 1
+        amount_token = _require_token(tokens, index, instruction, "creation amount")
+        if isinstance(amount_token, tuple):
+            result["amount"] = amount_token
 
-            result["name"] = tokens[index]
-            index += 1
+        else:
+            result["amount"] = _parse_int(amount_token, instruction)
 
-        if action == "nomanareset":
-            result["amount"] = True
+        index += 1
+        result["name"] = _require_token(tokens, index, instruction, "card name")
+        index += 1
 
-    # Applies an effect onto a card
+    elif action == "nomanareset":
+        # This used to be nested under the 'create' branch, making it unreachable.
+        result["amount"] = True
+
     elif action == "apply":
-        if index < len(tokens):
-            result['status'] = tokens[index]
-            index += 1
+        result["status"] = _require_token(tokens, index, instruction, "status")
+        index += 1
 
-            if tokens[index] == "creatureid":
+        if index < len(tokens):
+            target_token = tokens[index]
+
+            if target_token == "creatureid":
                 result["creatureid"] = True
                 index += 1
 
-            else:
-                target_token = tokens[index]
-                if '/' in target_token:
-                    result['target_type'] = target_token.split('/')
-                    index += 1
-
-    # Increase/decrease stats for spell cards
-    # Syntax should be something like castinc creatureid att 4
-    # Permanent increase as opposed to a temporary increase
-    elif action in ["castinc", "castdec"]:
-        if index < len(tokens):
-            if tokens[index] == "creatureid":
-                result["creatureid"] = True
+            elif "/" in str(target_token):
+                result["target_type"] = str(target_token).split("/")
                 index += 1
 
-            result["field"] = tokens[index]
-            index += 1
-            result["amount"] = tokens[index]
+            elif target_token in TARGET_TYPES:
+                result["target_type"] = target_token
+                index += 1
+
+    elif action in {"castinc", "castdec"}:
+        if index < len(tokens) and tokens[index] == "creatureid":
+            result["creatureid"] = True
             index += 1
 
-    # Morphs a creature
+        result["field"] = _require_token(tokens, index, instruction, "field")
+        index += 1
+
+        if result["field"] not in FIELDS:
+            raise ParseError(f"Unknown field {result['field']!r} in instruction {instruction!r}.")
+        
+        amount_token = _require_token(tokens, index, instruction, "amount")
+        result["amount"] = amount_token if isinstance(amount_token, tuple) else _parse_int(amount_token, instruction)
+        index += 1
+
     elif action == "morph":
-        if index < len(tokens):
-            if tokens[index] == "creatureid":
-                result["creatureid"] = True
-                index += 1
+        if index < len(tokens) and tokens[index] == "creatureid":
+            result["creatureid"] = True
+            index += 1
 
-            result["amount"] = tokens[index]
+        result["amount"] = _require_token(tokens, index, instruction, "morph value")
+        index += 1
 
-    # Return the parsed result for any action branch
+    elif action not in ACTIONS:
+        raise ParseError(f"Unknown action {action!r} in instruction {instruction!r}.")
+
     return result
 
 
-################## 
-# ERROR HANDLING #
-##################
+def _parse_int(value: Any, instruction: str) -> int:
+    """Parse an integer token with a domain-specific error message."""
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ParseError(f"Expected an integer amount, got {value!r} in {instruction!r}.") from exc
 
-class ParseError(Exception):
-    """An exception that occurs when handling parsing."""
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
-        
+
+print(parse("summon? inc att 2 global", None, None))
