@@ -59,8 +59,8 @@ class CreatureCard(Card):
         Initialises a Creature Card.
         """
         super().__init__(name, generic_mana, sp_mana, "Creature", description, effect)
-        self.attack = att
-        self.defence = end
+        self.att = att
+        self.end = end
      
     def to_dict(self) -> dict:
         """

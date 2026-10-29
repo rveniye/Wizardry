@@ -30,7 +30,7 @@ A plain "trigger? ability; ..." string is still accepted, so older effects keep 
 
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Union
-from error_handling import ParseError
+from src.modules.error_handling import ParseError
 
 if TYPE_CHECKING:
     from src.game import Game
@@ -39,19 +39,19 @@ if TYPE_CHECKING:
 STATIC_TRIGGER = "None?"
 EffectDict = Dict[str, Union[str, List[str]]]
 
-TRIGGERS = ["tap?", "summon?", "enter?", "attack?", "block?", "discard?"]
-STATIC_ABILITIES = [
+TRIGGERS = {"tap?", "summon?", "enter?", "attack?", "block?", "discard?"}
+STATIC_ABILITIES = {
     "haste", "flying", "reach", "entertap", "unblockable", "trample", "invincible", "vigilant"
-]
-ACTIONS = [
+}
+ACTIONS = {
     "gen", "draw", "discard", "heal", "return", "count", "damage", "destroy",
     "apply", "kill", "morph", "revive", "nomanareset", "create", "invuln",
     "castinc", "castdec",
-]
-MODIFIERS = ["inc", "dec"]
-PLACES = ["graveyard", "deck", "hand"]
-FIELDS = ["att", "end"]
-TARGET_TYPES = ["creatureid", "player"]
+}
+MODIFIERS = {"inc", "dec"}
+PLACES = {"graveyard", "deck", "hand"}
+FIELDS = {"att", "end"}
+TARGET_TYPES = {"creatureid", "player"}
 
 
 def parse(effect: Union[EffectDict, str], game_state: Game, player: str) -> list[dict[str, Any]]:
@@ -225,6 +225,7 @@ def parse_single(instruction: str, game_state: Game, player: str) -> dict[str, A
         "action": None,
         "field": None,
         "amount": None,
+        "scope": None,
     }
 
     if instruction in STATIC_ABILITIES:
@@ -277,11 +278,8 @@ def parse_single(instruction: str, game_state: Game, player: str) -> dict[str, A
                 index += 1
 
         if index < len(tokens):
-            if tokens[index] == "all":
-                result["all"] = True
-                index += 1
-            elif tokens[index] == "global":
-                result["global"] = True
+            if tokens[index] in {"all", "global"}:
+                result["scope"] = tokens[index]
                 index += 1
 
     elif action == "gen":
@@ -313,9 +311,11 @@ def parse_single(instruction: str, game_state: Game, player: str) -> dict[str, A
                 result["creatureid"] = True
                 index += 1
 
-            elif token in {"global", "all"}:
+            elif token in {"global", "all"} and action in {"discard", "heal", "invuln"}:
                 result[token] = True
                 index += 1
+            elif token in {"global", "all"} and action in {"draw", "revive"}:
+                raise ParseError("I don't know what you fucking expect me to do")
 
             elif str(token).isdigit():
                 result["amount"] = int(token)
@@ -391,6 +391,4 @@ def _parse_int(value: Any, instruction: str) -> int:
         return int(value)
     except (TypeError, ValueError) as exc:
         raise ParseError(f"Expected an integer amount, got {value!r} in {instruction!r}.") from exc
-
-
-print(parse("summon? inc att 2 global", None, None))
+    

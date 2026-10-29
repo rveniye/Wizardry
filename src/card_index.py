@@ -94,40 +94,40 @@ wild_highlands = LandCard(
 
 
 # Cost lands
-atlantis = LandCard(
-    name="Atlantis",
-    generic_mana=0,
-    sp_mana="",
-    description=(
-        "Enters the battlefield tapped."
-        "|t1b: Generates 2 green mana."
-    ),
-    effect="entertap; tap? for 1 blue gen 2 green; tap? gen 1 blue",
-)
+# atlantis = LandCard(
+#     name="Atlantis",
+#     generic_mana=0,
+#     sp_mana="",
+#     description=(
+#         "Enters the battlefield tapped."
+#         "|t1b: Generates 2 green mana."
+#     ),
+#     effect="entertap; tap? for 1 blue gen 2 green; tap? gen 1 blue",
+# )
 
-sand_temple = LandCard(
-    name="Sand Temple",
-    generic_mana=0,
-    sp_mana="",
-    description=(
-        "Enters the battlefield tapped."
-        "|t1r: Generates 2 red mana."
-    ),
-    effect="entertap; tap? for 1 blue gen 2 red; tap? gen 1 blue",
-)
+# sand_temple = LandCard(
+#     name="Sand Temple",
+#     generic_mana=0,
+#     sp_mana="",
+#     description=(
+#         "Enters the battlefield tapped."
+#         "|t1r: Generates 2 red mana."
+#     ),
+#     effect="entertap; tap? for 1 blue gen 2 red; tap? gen 1 blue",
+# )
 
-dragon_dwelling = LandCard(
-    name="Dragon Dwelling",
-    generic_mana=0,
-    sp_mana="",
-    description="Enters battlefield tapped."
-                "|t1r: Generates 2 green mana.",
-    effect="entertap;",
-)
+# dragon_dwelling = LandCard(
+#     name="Dragon Dwelling",
+#     generic_mana=0,
+#     sp_mana="",
+#     description="Enters battlefield tapped."
+#                 "|t1r: Generates 2 green mana.",
+#     effect="entertap;",
+# )
 
-################
+##################
 # CREATURE CARDS #
-################
+##################
 
 ###################
 # Green creatures #
@@ -139,7 +139,7 @@ slime = CreatureCard(
     description="Attacking doesn't cause this creature to tap.",
     att=2,
     end=2,
-    effect="vigilant",
+    effect="issummoned? vigilant",
 )
 
 bigger_slime = CreatureCard(
@@ -152,7 +152,7 @@ bigger_slime = CreatureCard(
     ),
     att=3,
     end=3,
-    effect="vigilant",
+    effect="issummoned? vigilant",
 )
 
 forest_bear = CreatureCard(
@@ -191,7 +191,7 @@ alpha_wolf = CreatureCard(
     ),
     att=3,
     end=2,
-    effect="summon? global inc att 1",
+    effect="summon? inc att 1 global",
 )
 
 stone_giant = CreatureCard(
@@ -240,7 +240,7 @@ archer = CreatureCard(
     description="This creature has reach.|His arrows go pretty far",
     att=2,
     end=3,
-    effect="reach",
+    effect="issummoned? reach",
 )
 
 hero = CreatureCard(
@@ -250,7 +250,7 @@ hero = CreatureCard(
     description="All creatures you control gain +1 to endurance.|So inspiring",
     att=3,
     end=3,
-    effect="summon? global inc end 1",
+    effect="summon? inc end 1 global",
 )
 
 ##################
@@ -263,7 +263,7 @@ skeleton = CreatureCard(
     description="Haste.\nGains +1 to endurance when blocking.",
     att=2,
     end=2,
-    effect="haste; block? inc end 1",
+    effect="issummoned? haste; block? inc end 1",
 )
 
 skeleton_army = CreatureCard(
@@ -273,7 +273,7 @@ skeleton_army = CreatureCard(
     description="Gains +1 to attack for every skeleton in the graveyard.",
     att=2,
     end=2,
-    effect="haste; summon? inc att (graveyard count Skeleton)",
+    effect="issummoned? haste; summon? inc att (graveyard count Skeleton)",
 )
 
 phantom_warrior = CreatureCard(
@@ -283,7 +283,7 @@ phantom_warrior = CreatureCard(
     description="Reach. This creature can block flying creatures.",
     att=2,
     end=3,
-    effect="reach",
+    effect="issummoned? reach",
 )
 
 sea_serpent = CreatureCard(
@@ -293,7 +293,7 @@ sea_serpent = CreatureCard(
     description="Trample. It's a powerful sea creature.|Ssssss",
     att=5,
     end=5,
-    effect="trample",
+    effect="issummoned? trample",
 )
 
 arcane_scholar = CreatureCard(
@@ -319,7 +319,7 @@ vergil = CreatureCard(
     ),
     att=6,
     end=6,
-    effect="unblockable",
+    effect="issummoned? unblockable",
 )
 
 blue_wizar = CreatureCard(
@@ -358,7 +358,7 @@ wanderer = CreatureCard(
     ),
     att=3,
     end=4,
-    effect="flying",
+    effect="issummoned? flying",
 )
 
 mind_flayer = CreatureCard(
@@ -384,7 +384,7 @@ goblin_raider = CreatureCard(
     description="Haste. This creature can attack the turn it enters.",
     att=2,
     end=1,
-    effect="haste",
+    effect="issummoned? haste",
 )
 
 fire_elemental = CreatureCard(
@@ -406,7 +406,7 @@ dragon_whelp = CreatureCard(
     ),
     att=3,
     end=2,
-    effect="flying",
+    effect="issummoned? flying",
 )
 
 berserker = CreatureCard(
@@ -426,7 +426,7 @@ imp = CreatureCard(
     description="Flying. A very evil creature.",
     att=2,
     end=2,
-    effect="flying",
+    effect="issummoned? flying",
 )
 
 sazael_the_great = CreatureCard(
@@ -439,7 +439,7 @@ sazael_the_great = CreatureCard(
     ),
     att=5,
     end=5,
-    effect="flying; trample; attack? inc att 2",
+    effect="issummoned? flying; issummoned? trample; attack? inc att 2",
 )
 
 red_wizar = CreatureCard(
@@ -465,7 +465,7 @@ intellect_devourer = CreatureCard(
     ),
     att=2,
     end=2,
-    effect="haste",
+    effect="issummoned? haste",
 )
 
 
@@ -523,7 +523,7 @@ lands = [
     tropical_grove,
     volcanic_peak,
     wild_highlands,
-    atlantis,
-    sand_temple,
-    dragon_dwelling,
+    # atlantis,
+    # sand_temple,
+    # dragon_dwelling,
 ]

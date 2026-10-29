@@ -54,6 +54,20 @@ class Game:
         for k, v in self.decks[p1_name].items():
             self.card_abilities[p2_name][k] = parse(v.effect, self, p2_name)
 
+
+    def get_card_abilities(self, card_id: str) -> dict:
+        """
+        Gets the abilities of the card.
+
+
+        """
+        p1_field, p2_field = self.card_abilities.get(self.p1_name), self.card_abilities.get(self.p2_name)
+
+        for k1, k2 in zip(p1_field, p2_field):
+            if k1 == card_id and p1_field[k1] is not None: return p1_field[k1]
+            if k2 == card_id and p1_field[k2] is not None: return p2_field[k2]
+            else: raise KeyError("Card does not exist.")
+
     def is_in_hand(self, player: str, card_id: str) -> bool:
         """
         Validates whether the card is in the player's hand, and whether the player is actually able to play the card.
@@ -67,6 +81,7 @@ class Game:
         """
         target_card = self.hand[player].get(card_id)
         if target_card is None:
+            print("Not in hand (is_in_hand)")
             return False
  
         # Lands are free to play.
@@ -90,9 +105,11 @@ class Game:
             bool: Whether the move is legal.
         """
         if not self.is_in_hand(player, card_id):
+            print("Not in hand (play_creature)")
             return False
  
         self.active_creatures[player][card_id] = self.hand[player].pop(card_id)
+        
         self.mana_pools
         return True
     
